@@ -1,4 +1,4 @@
-lazy val `quoted-dsl-example` =
+lazy val `qdsls-presentation` =
   project.in(file("."))
     .settings(
       name    := "dotty_macro_example",
