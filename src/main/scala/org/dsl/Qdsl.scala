@@ -90,5 +90,19 @@ object Qdsl {
       }
     val result: Ast = recurse(underlyingArgument(value))
     println(pprint.apply(result))
-    '{ ??? }
+    lift(result)
+
+  def lift(ast: Ast)(using Quotes): Expr[Ast] =
+    import quotes.reflect.{Constant => _, _}
+    import Ast._
+    ast match
+      case Subtract(a: Ast, b: Ast) => '{ Subtract(${ lift(a) }, ${ lift(b) }) }
+      case Concat(a: Ast, b: Ast)   => '{ Concat(${ lift(a) }, ${ lift(b) }) }
+      case ToString(v: Ast)         => '{ ToString(${ lift(v) }) }
+      case Constant(v: String)      => '{ Constant(${ Expr(v) }) }
+      case Key(name: String)        => '{ Key(${ Expr(name) }) }
+      case Map(left: Ast, v: SetVariable, body: Ast) =>
+        '{ Map(${ lift(left) }, ${ lift(v).asExprOf[SetVariable] }, ${ lift(body) }) }
+      case SetVariable(name: String) => '{ SetVariable(${ Expr(name) }) }
+      case GetVariable(name: String) => '{ GetVariable(${ Expr(name) }) }
 }
