@@ -1,0 +1,11 @@
+.idea
+projecct/target
+target
+.dotty-ide*
+nohup.out
+.vscode
+.metals
+.bsp
+.bloop
+metals.sbt
+ast.json
