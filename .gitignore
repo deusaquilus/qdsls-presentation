@@ -9,3 +9,4 @@ nohup.out
 .bloop
 metals.sbt
 ast.json
+.DS_Store
