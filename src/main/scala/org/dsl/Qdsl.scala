@@ -67,13 +67,23 @@ object Qdsl {
       import quotes.reflect._
       Some(expr.asTerm)
 
+  def canBeInt(str: String) =
+    scala.util.Try(str.toInt).isSuccess
+
   inline def query(inline value: Any): Ast = ${ queryImpl('value) }
   def queryImpl(value: Expr[Any])(using Quotes): Expr[Ast] =
     import quotes.reflect.{toString => _, _}
     def recurse(curr: Expr[_]): Ast =
       curr match {
-        case AsTerm(Literal(StringConstant(value))) =>
-          Ast.Constant(value)
+        case '{ ($str: String).asInstanceOf[Int] } =>
+          str match
+            case AsTerm(Literal(StringConstant(str))) if (!canBeInt(str)) =>
+              report.throwError(s"The constant string '$str' cannot possibly be converted to an Int. Sorry!")
+            case _ =>
+              report.throwError("Cannot class-cast using this DSL. Use .toInt instead.")
+
+        case '{ ${ Expr(value) }: String } => Ast.Constant(value)
+        // case AsTerm(Literal(StringConstant(value))) => Ast.Constant(value)
         case AsTerm(Apply(UntypeApply(Select(left, "map")), List(Lambda1(valueVar, lambdaBody)))) =>
           Ast.Map(recurse(left.asExpr), Ast.SetVariable(valueVar), recurse(lambdaBody.asExpr))
         case '{ type t; Entity.apply[`t`](($value: `t`)) } => recurse(value)
@@ -89,20 +99,55 @@ object Qdsl {
           report.throwError(s"Cannot match the expression: ${Printer.TreeStructure.show(curr.asTerm)}")
       }
     val result: Ast = recurse(underlyingArgument(value))
-    println(pprint.apply(result))
+    report.info(Format(result.toString), value)
     lift(result)
 
   def lift(ast: Ast)(using Quotes): Expr[Ast] =
     import quotes.reflect.{Constant => _, _}
     import Ast._
     ast match
-      case Subtract(a: Ast, b: Ast) => '{ Subtract(${ lift(a) }, ${ lift(b) }) }
-      case Concat(a: Ast, b: Ast)   => '{ Concat(${ lift(a) }, ${ lift(b) }) }
-      case ToString(v: Ast)         => '{ ToString(${ lift(v) }) }
-      case Constant(v: String)      => '{ Constant(${ Expr(v) }) }
-      case Key(name: String)        => '{ Key(${ Expr(name) }) }
-      case Map(left: Ast, v: SetVariable, body: Ast) =>
-        '{ Map(${ lift(left) }, ${ lift(v).asExprOf[SetVariable] }, ${ lift(body) }) }
+      case Subtract(a: Ast, b: Ast)  => '{ Subtract(${ lift(a) }, ${ lift(b) }) }
+      case Concat(a: Ast, b: Ast)    => '{ Concat(${ lift(a) }, ${ lift(b) }) }
+      case ToString(v: Ast)          => '{ ToString(${ lift(v) }) }
+      case Constant(v: String)       => '{ Constant(${ Expr(v) }) }
+      case Key(name: String)         => '{ Key(${ Expr(name) }) }
       case SetVariable(name: String) => '{ SetVariable(${ Expr(name) }) }
       case GetVariable(name: String) => '{ GetVariable(${ Expr(name) }) }
+      case Map(left: Ast, v: SetVariable, body: Ast) =>
+        '{ Map(${ lift(left) }, ${ lift(v).asExprOf[SetVariable] }, ${ lift(body) }) }
+
+  object Lift:
+    import Ast._
+    def apply(ast: Ast)(using Quotes) = Expr(ast)
+
+    given ToExpr[Ast] with
+      def apply(v: Ast)(using Quotes) =
+        v match
+          case v: Subtract    => Expr(v)
+          case v: Concat      => Expr(v)
+          case v: ToString    => Expr(v)
+          case v: Constant    => Expr(v)
+          case v: Key         => Expr(v)
+          case v: SetVariable => Expr(v)
+          case v: GetVariable => Expr(v)
+          case v: Map         => Expr(v)
+
+    given ToExpr[Subtract] with
+      def apply(v: Subtract)(using Quotes) = '{ Subtract(${ Expr(v.a) }, ${ Expr(v.b) }) }
+    given ToExpr[Concat] with
+      def apply(v: Concat)(using Quotes) = '{ Concat(${ Expr(v.a) }, ${ Expr(v.b) }) }
+    given ToExpr[ToString] with
+      def apply(v: ToString)(using Quotes) = '{ ToString(${ Expr(v.v) }) }
+    given ToExpr[Constant] with
+      def apply(v: Constant)(using Quotes) = '{ Constant(${ Expr(v.v) }) }
+    given ToExpr[Key] with
+      def apply(v: Key)(using Quotes) = '{ Key(${ Expr(v.name) }) }
+    given ToExpr[SetVariable] with
+      def apply(v: SetVariable)(using Quotes) = '{ SetVariable(${ Expr(v.name) }) }
+    given ToExpr[GetVariable] with
+      def apply(v: GetVariable)(using Quotes) = '{ GetVariable(${ Expr(v.name) }) }
+    given ToExpr[Map] with
+      def apply(v: Map)(using Quotes) = '{ Map(${ Expr(v.body) }, ${ Expr(v.v) }, ${ Expr(v.left) }) }
+
+  end Lift
 }

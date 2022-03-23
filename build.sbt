@@ -4,17 +4,30 @@ lazy val `qdsls-presentation` =
       name    := "dotty_macro_example",
       version := "0.1.0",
       resolvers += Resolver.mavenLocal,
-      scalaVersion := "3.0.0", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
-
+      scalaVersion := "3.1.0",
       scalacOptions ++= Seq(
         "-language:implicitConversions"
       ),
       libraryDependencies ++= Seq(
-        ("dev.zio"       %% "zio-json"     % "0.1.5").withDottyCompat(scalaVersion.value),
-        ("com.lihaoyi"   %% "pprint"       % "0.5.6").withDottyCompat(scalaVersion.value),
-        ("org.scalameta" %% "scalafmt-cli" % "2.7.5").excludeAll(ExclusionRule(
-          organization = "org.scala-lang.modules",
-          name = "scala-xml_2.13"
-        )).withDottyCompat(scalaVersion.value)
+        "dev.zio"        %% "zio-json"     % Version.zioJson,
+        "com.lihaoyi"    %% "pprint"       % Version.pprint,
+        ("org.scalameta" %% "scalafmt-cli" % Version.scalafmt)
+          .excludeAll(
+            ExclusionRule(organization = "com.lihaoyi", name = "sourcecode_2.13"),
+            ExclusionRule(organization = "com.lihaoyi", name = "fansi_2.13"),
+            ExclusionRule(organization = "com.lihaoyi", name = "pprint_2.13"),
+            ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")
+          )
+          .cross(CrossVersion.for3Use2_13)
+      ),
+      excludeDependencies ++= Seq(
+        ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
       )
     )
+
+val Version = new {
+  val pprint     = "0.6.6"
+  val scalafmt   = "3.1.0"
+  val zioJson    = "0.2.0-M2"
+  val zioPrelude = "1.0.0-RC6"
+}
