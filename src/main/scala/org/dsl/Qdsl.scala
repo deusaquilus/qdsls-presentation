@@ -8,7 +8,7 @@ object Extractors {
     def unapply(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.Term)] =
       import quotes.reflect.{Ident => TIdent, Constant => TConstant, Block => TBlock, ValDef => TValDef, _}
       term match
-        case Lambda(List(TValDef(ident, Inferred(), None)), methodBody) => Some((ident, methodBody))
+        case Lambda(List(TValDef(ident, _, None)), methodBody) => Some((ident, methodBody))
         case TBlock(List(), expr)                                       => unapply(expr)
         case _                                                          => None
   end Lambda1
@@ -96,7 +96,7 @@ object Qdsl {
         case AsTerm(Ident(data)) =>
           Ast.GetVariable(data)
         case _ =>
-          report.throwError(s"Cannot match the expression: ${Printer.TreeStructure.show(curr.asTerm)}")
+          report.throwError(s"Cannot match the expression: ${Format(Printer.TreeStructure.show(curr.asTerm))}")
       }
     val result: Ast = recurse(underlyingArgument(value))
     report.info(Format(result.toString), value)
