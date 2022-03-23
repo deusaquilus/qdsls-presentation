@@ -100,21 +100,21 @@ object Qdsl {
       }
     val result: Ast = recurse(underlyingArgument(value))
     report.info(Format(result.toString), value)
-    lift(result)
+    toExpr(result)
 
-  def lift(ast: Ast)(using Quotes): Expr[Ast] =
+  def toExpr(ast: Ast)(using Quotes): Expr[Ast] =
     import quotes.reflect.{Constant => _, _}
     import Ast._
     ast match
-      case Subtract(a: Ast, b: Ast)  => '{ Subtract(${ lift(a) }, ${ lift(b) }) }
-      case Concat(a: Ast, b: Ast)    => '{ Concat(${ lift(a) }, ${ lift(b) }) }
-      case ToString(v: Ast)          => '{ ToString(${ lift(v) }) }
+      case Subtract(a: Ast, b: Ast)  => '{ Subtract(${ toExpr(a) }, ${ toExpr(b) }) }
+      case Concat(a: Ast, b: Ast)    => '{ Concat(${ toExpr(a) }, ${ toExpr(b) }) }
+      case ToString(v: Ast)          => '{ ToString(${ toExpr(v) }) }
       case Constant(v: String)       => '{ Constant(${ Expr(v) }) }
       case Key(name: String)         => '{ Key(${ Expr(name) }) }
       case SetVariable(name: String) => '{ SetVariable(${ Expr(name) }) }
       case GetVariable(name: String) => '{ GetVariable(${ Expr(name) }) }
       case Map(left: Ast, v: SetVariable, body: Ast) =>
-        '{ Map(${ lift(left) }, ${ lift(v).asExprOf[SetVariable] }, ${ lift(body) }) }
+        '{ Map(${ toExpr(left) }, ${ toExpr(v).asExprOf[SetVariable] }, ${ toExpr(body) }) }
 
   object Lift:
     import Ast._
